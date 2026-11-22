@@ -1,0 +1,127 @@
+# CrawlRX stack.
+#
+#   docker compose up -d                    # CrawlRX + SearXNG + challenge gateway (use your own model, or none)
+#   docker compose --profile ollama up -d   # ...plus Ollama with a small default model
+#
+# Settings come from .env (copy .env.example). Ports bind to 127.0.0.1 only;
+# set CRAWLRX_BIND=0.0.0.0 *and* CRAWLRX_API_KEYS before exposing on a network.
+
+name: crawlrx
+
+services:
+  crawlrx:
+    build: .
+    image: crawlrx:local
+    restart: unless-stopped
+    ports:
+      - "${CRAWLRX_BIND:-127.0.0.1}:${CRAWLRX_PORT:-7337}:7337"
+    environment:
+      SEARXNG_URL: http://searxng:8080
+      # One setting picks the model server; empty = auto-detect the candidates below.
+      CRAWLRX_LLM_BASE_URL: ${CRAWLRX_LLM_BASE_URL:-}
+      CRAWLRX_LLM_API_KEY: ${CRAWLRX_LLM_API_KEY:-}
+      CRAWLRX_LLM_MODEL: ${CRAWLRX_LLM_MODEL:-}
+      CRAWLRX_VISION_MODEL: ${CRAWLRX_VISION_MODEL:-}
+      CRAWLRX_LLM_REASONING_EFFORT: ${CRAWLRX_LLM_REASONING_EFFORT:-}
+      CRAWLRX_LLM_TIMEOUT: ${CRAWLRX_LLM_TIMEOUT:-120}
+      CRAWLRX_LLM_CANDIDATES: http://ollama:11434/v1,http://host.docker.internal:11434/v1,http://host.docker.internal:1234/v1
+      CRAWLRX_API_KEYS: ${CRAWLRX_API_KEYS:-}
+      # Where the port is published on the host; CrawlRX refuses non-loopback without API keys.
+      CRAWLRX_BIND: ${CRAWLRX_BIND:-127.0.0.1}
+      CRAWLRX_ALLOW_NO_AUTH: ${CRAWLRX_ALLOW_NO_AUTH:-}
+      CRAWLRX_CORS_ORIGINS: ${CRAWLRX_CORS_ORIGINS:-}
+      CRAWLRX_CAPTCHA_HANDOFF: ${CRAWLRX_CAPTCHA_HANDOFF:-none}
+      CRAWLRX_CAPTCHA_WAIT: ${CRAWLRX_CAPTCHA_WAIT:-180}
+      # Challenge solving is on by default; failed solves fall back to the hand-off above.
+      # CRAWLRX_CAPTCHA_MODE=handoff turns solving off.
+      CRAWLRX_CAPTCHA_MODE: ${CRAWLRX_CAPTCHA_MODE:-solve}
+      CRAWLRX_SOLVERS: ${CRAWLRX_SOLVERS:-}
+      CRAWLRX_FLARESOLVERR_URL: ${CRAWLRX_FLARESOLVERR_URL:-http://challenge-gateway:8191/v1}
+      CRAWLRX_SOLVER_SERVICE_URL: ${CRAWLRX_SOLVER_SERVICE_URL:-}
+      CRAWLRX_SOLVER_SERVICE_KEY: ${CRAWLRX_SOLVER_SERVICE_KEY:-}
+      CRAWLRX_BROWSER_POOL: ${CRAWLRX_BROWSER_POOL:-2}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - crawlrx-data:/data
+    shm_size: "1gb"
+    depends_on:
+      searxng:
+        condition: service_healthy
+
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SEARXNG_PORT:-8888}:8080"
+    environment:
+      INSTANCE_NAME: CrawlRX
+      SEARXNG_BASE_URL: http://localhost:${SEARXNG_PORT:-8888}/
+      SEARXNG_SETTINGS_PATH: /etc/searxng/settings.yml
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+    # No secret in .env? Generate a random one on each start.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        export SEARXNG_SECRET="$${SEARXNG_SECRET:-$$(head -c 24 /dev/urandom | base64 | tr -dc a-zA-Z0-9)}";
+        exec /usr/local/searxng/entrypoint.sh
+    volumes:
+      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./deploy/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+      - searxng-cache:/var/cache/searxng
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request;
+          req=urllib.request.Request('http://127.0.0.1:8080/healthz', headers={'X-Real-IP':'127.0.0.1'});
+          urllib.request.urlopen(req, timeout=10).read()"
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+
+  # External challenge gateway (FlareSolverr, https://github.com/FlareSolverr/FlareSolverr, MIT;
+  # see THIRD_PARTY_NOTICES.md). No host port: CrawlRX reaches it internally.
+  challenge-gateway:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${FLARESOLVERR_LOG_LEVEL:-info}
+
+  ollama:
+    profiles: ["ollama"]
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    # No host port: CrawlRX reaches it as http://ollama:11434 (avoids clashing
+    # with an Ollama already installed on your machine).
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    # NVIDIA GPU: uncomment (needs the NVIDIA Container Toolkit).
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+  ollama-pull:
+    profiles: ["ollama"]
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${CRAWLRX_OLLAMA_MODEL:-qwen2.5vl:3b}"]
+    restart: "no"
+
+volumes:
+  crawlrx-data:
+  searxng-cache:
+  ollama-models:

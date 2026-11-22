@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "description": "CrawlRX search source registry. Keep this file boring: only source groups and proof queries.",
+  "searxng": {
+    "groups": {
+      "web": {
+        "engines": "bing,wikipedia",
+        "role": "default web core",
+        "minimum_results": 3
+      },
+      "news": {
+        "engines": "bing news,reuters,wikinews",
+        "role": "default news core",
+        "minimum_results": 1
+      },
+      "images": {
+        "engines": "bing images,openverse,wikicommons.images,lucide",
+        "role": "default image core",
+        "minimum_results": 3
+      },
+      "videos": {
+        "engines": "youtube,dailymotion,sepiasearch,wikicommons.videos",
+        "role": "default video core",
+        "minimum_results": 3
+      }
+    },
+    "disabled_or_optional": [
+      {
+        "engine": "duckduckgo",
+        "reason": "CAPTCHA/timeout from this host under live probes"
+      },
+      {
+        "engine": "google",
+        "reason": "access denied risk; use CrawlRX browser routes or licensed APIs instead"
+      },
+      {
+        "engine": "startpage",
+        "reason": "CAPTCHA risk under live probes"
+      },
+      {
+        "engine": "qwant",
+        "reason": "access denied under live probes"
+      },
+      {
+        "engine": "mojeek",
+        "reason": "kept available but disabled by default after repeated access-denied probes"
+      },
+      {
+        "engine": "presearch",
+        "reason": "kept available but disabled by default after repeated access-denied probes"
+      }
+    ]
+  },
+  "diagnostics": {
+    "checks": [
+      {
+        "name": "web-core-openai",
+        "source": "searxng",
+        "query": "openai",
+        "group": "web",
+        "min_results": 3
+      },
+      {
+        "name": "web-core-niche",
+        "source": "searxng",
+        "query": "playwright python",
+        "group": "web",
+        "min_results": 1
+      },
+      {
+        "name": "news-core-openai",
+        "source": "searxng",
+        "query": "openai",
+        "group": "news",
+        "min_results": 1
+      },
+      {
+        "name": "images-core-openai",
+        "source": "searxng",
+        "query": "openai",
+        "group": "images",
+        "min_results": 3
+      },
+      {
+        "name": "videos-core-openai",
+        "source": "searxng",
+        "query": "openai",
+        "group": "videos",
+        "min_results": 3
+      }
+    ]
+  }
+}

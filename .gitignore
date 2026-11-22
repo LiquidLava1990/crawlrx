@@ -1,0 +1,41 @@
+.env
+*.log
+logs/
+data/
+tmp/
+__pycache__/
+*.py[cod]
+*.db
+*.db-*
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# OS / editor noise
+.DS_Store
+desktop.ini
+*.tmp
+*.bak
+*~
+*.swp
+.idea/
+.vscode/
+.coverage
+htmlcov/
+.tox/
+node_modules/
+
+# Model weights: not in git (over GitHub's 100 MB limit).
+# Shipped as GitHub release assets; fetched by crawlrx.solver_service.solvers.models.download_models
+# with SHA256 verification (see crawlrx/model_weights/PROVENANCE.md).
+crawlrx/model_weights/*.onnx
+*.onnx
+*.pt
+*.pth
+
+# Local tool state
+.claude/

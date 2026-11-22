@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crawlrx"
+version = "0.1.0"
+description = "Self-hosted AI web scraper and crawler for local LLMs (Ollama, LM Studio, vLLM) with environment-check detection, stealth Chromium, automatic challenge solving and human hand-off."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "CrawlRX contributors" }]
+keywords = [
+    "web-scraping", "web-scraper", "web-crawler", "scraper", "crawler", "web-search", "searxng",
+    "llm", "local-llm", "ollama", "lm-studio", "vllm", "openai-compatible", "rag", "ai-agent",
+    "llm-extraction", "structured-data", "vision-language-model", "playwright", "fastapi", "self-hosted",
+    "challenge-solving", "interaction-challenge", "environment-check", "cloudflare", "web-automation",
+    "stealth-browser", "browser-fingerprint", "tls-fingerprint", "headless-browser",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "starlette>=0.36.0",
+    "pydantic>=2.6.0",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27.0",
+    "requests>=2.31.0",
+    "urllib3>=2.1.0",
+    "playwright>=1.44.0",
+    "playwright-stealth>=2.0.0",
+    "browserforge>=1.2.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.2.0",
+    "lxml_html_clean>=0.1.0",
+    "readability-lxml>=0.8.1",
+    "markdownify>=0.12.1",
+    "html2text>=2024.2.26",
+    "pdfplumber>=0.10.0",
+    "ddgs>=7.0.0",
+    "TikTokApi>=7.3.0",
+    # Interaction-challenge solving (on by default): reCAPTCHA v2 audio. Needs ffmpeg on the PATH.
+    "playwright-recaptcha>=0.5.1",
+    # SpeechRecognition/pydub (used by playwright-recaptcha) need stdlib modules removed in 3.13.
+    "standard-aifc>=3.13; python_version >= '3.13'",
+    "standard-chunk>=3.13; python_version >= '3.13'",
+    "audioop-lts>=0.2.1; python_version >= '3.13'",
+]
+
+[project.optional-dependencies]
+# Faster HTTP-first fetching and extra scrapers. Everything works without these.
+extras = ["primp>=0.6", "cloudscraper>=1.2", "pytrends>=4.9"]
+# Self-hosted challenge-solving service (crawlrx.solver_service). Heavy on purpose:
+# stealth browsers, vision models and OCR engines for the 18 challenge solvers.
+solver = [
+    "aiohttp>=3.9",
+    "DrissionPage>=4.0",
+    "hcaptcha-challenger==0.19.0",
+    "tls-client>=1.2",
+    "curl_cffi>=0.7",
+    "camoufox[geoip]>=0.4",
+    "pydoll-python>=0.1",
+    "opencv-python-headless>=4.9",
+    "pytesseract>=0.3.10",
+    "botright==0.5.1",
+    "playwright-stealth>=2.0.0",
+    "hrequests>=0.9",
+    "numpy>=1.26",
+    "easyocr>=1.7",
+    "paddleocr>=3.0",
+    "paddlepaddle>=3.0",
+    "faster-whisper>=1.0",
+    "ultralytics>=8.2",
+    "onnxruntime>=1.17",
+    "PyYAML>=6.0",
+]
+test = ["pytest>=8.0"]
+
+[project.scripts]
+crawlrx = "crawlrx.cli:main"
+crawlrx-solver = "crawlrx.solver_service.start_service:main"
+
+[project.urls]
+Homepage = "https://github.com/LiquidLava1990/crawlrx"
+Documentation = "https://github.com/LiquidLava1990/crawlrx#readme"
+Source = "https://github.com/LiquidLava1990/crawlrx"
+Issues = "https://github.com/LiquidLava1990/crawlrx/issues"
+Changelog = "https://github.com/LiquidLava1990/crawlrx/releases"
+
+[tool.setuptools.packages.find]
+include = ["crawlrx*"]
+
+[tool.setuptools.package-data]
+crawlrx = ["*.json", "*.yml", "*.toml", "model_weights/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning",
+]

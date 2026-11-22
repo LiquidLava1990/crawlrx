@@ -1,0 +1,138 @@
+use_default_settings:
+  engines:
+    keep_only:
+      # Hardened general web core (engines that answered reliably in live tests).
+      - bing
+      - wikipedia
+      # Optional general engines. Kept available, but not enabled by default
+      # because they returned access-denied under repeated live probes.
+      - mojeek
+      - presearch
+      # News
+      - bing news
+      - reuters
+      - wikinews
+      # Images and icons
+      - bing images
+      - openverse
+      - wikicommons.images
+      - lucide
+      # Video
+      - youtube
+      - dailymotion
+      - sepiasearch
+      - wikicommons.videos
+      # Developer and research verticals
+      - github
+      - stackoverflow
+      - mdn
+      - arxiv
+      - pubmed
+      - semantic scholar
+      # Maps and reference
+      - openstreetmap
+      - photon
+      - wiktionary
+
+general:
+  enable_metrics: true
+
+server:
+  secret_key: "replace-me-via-SEARXNG_SECRET-env"  # overridden by the SEARXNG_SECRET env var
+  bind_address: "0.0.0.0"
+  port: 8080
+
+search:
+  ban_time_on_fail: 10
+  max_ban_time_on_fail: 300
+  suspended_times:
+    SearxEngineAccessDenied: 900
+    SearxEngineCaptcha: 3600
+    SearxEngineTooManyRequests: 900
+    cf_SearxEngineCaptcha: 1296000
+    cf_SearxEngineAccessDenied: 86400
+    recaptcha_SearxEngineCaptcha: 604800
+  formats:
+    - html
+    - json
+
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 15.0
+  pool_connections: 50
+  pool_maxsize: 10
+  retries: 1
+
+engines:
+  - name: bing
+    disabled: false
+    timeout: 8.0
+  - name: mojeek
+    disabled: true
+    timeout: 8.0
+  - name: presearch
+    disabled: true
+    timeout: 5.0
+  - name: wikipedia
+    disabled: false
+    timeout: 5.0
+  - name: bing news
+    disabled: false
+    timeout: 8.0
+  - name: reuters
+    disabled: false
+    timeout: 8.0
+  - name: wikinews
+    disabled: false
+    timeout: 8.0
+  - name: bing images
+    disabled: false
+    timeout: 8.0
+  - name: openverse
+    disabled: false
+    timeout: 8.0
+  - name: wikicommons.images
+    disabled: false
+    timeout: 8.0
+  - name: lucide
+    disabled: false
+    timeout: 4.0
+  - name: youtube
+    disabled: false
+    timeout: 8.0
+  - name: dailymotion
+    disabled: false
+    timeout: 8.0
+  - name: sepiasearch
+    disabled: false
+    timeout: 8.0
+  - name: wikicommons.videos
+    disabled: false
+    timeout: 8.0
+  - name: github
+    disabled: false
+    timeout: 8.0
+  - name: stackoverflow
+    disabled: false
+    timeout: 8.0
+  - name: mdn
+    disabled: false
+    timeout: 8.0
+  - name: arxiv
+    disabled: false
+    timeout: 8.0
+  - name: pubmed
+    disabled: false
+    timeout: 8.0
+  - name: semantic scholar
+    disabled: false
+    timeout: 8.0
+  - name: openstreetmap
+    disabled: false
+    timeout: 8.0
+  - name: photon
+    disabled: false
+    timeout: 8.0
+  - name: wiktionary
+    disabled: false
+    timeout: 8.0

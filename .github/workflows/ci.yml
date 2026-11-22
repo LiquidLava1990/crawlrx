@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[test]"
+      - name: Install Chromium (exercises the browser SSRF guard tests)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then python -m playwright install --with-deps chromium
+          else python -m playwright install chromium; fi
+      - run: python -m pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+      - run: docker build -t crawlrx:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name crawlrx -e CRAWLRX_BIND=127.0.0.1 -p 127.0.0.1:7337:7337 crawlrx:ci
+          for i in $(seq 1 30); do curl -fsS localhost:7337/health && break; sleep 2; done
+          curl -fsS localhost:7337/model/status
+          docker exec crawlrx crawlrx doctor || true
+
+  installers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -s sh install.sh
+      - shell: pwsh
+        run: |
+          $t=$null; $e=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD/install.ps1", [ref]$t, [ref]$e)
+          if ($e.Count) { $e | ForEach-Object { $_.Message }; exit 1 }
