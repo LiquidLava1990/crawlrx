@@ -1,5 +1,6 @@
 """Audio adapters must keep the current browser context and independent files."""
 import asyncio
+
 import tempfile
 import threading
 import unittest
@@ -13,6 +14,18 @@ from playwright.async_api import async_playwright
 from crawlrx.solver_service.solvers import _browser_audio_download as shared
 from crawlrx.solver_service.solvers import _funcaptcha_browser as fun
 from crawlrx.solver_service.solvers import _recaptcha_audio_browser as recap
+
+# These tests serve loopback fixtures and drive a real (guarded) browser at
+# them; the browser route-guard blocks internal addresses by default. Opt in
+# per test (scoped, so the env never leaks into the security-guard tests that
+# assert blocking). Env is read by the guard at navigation time, so setting it
+# in a fixture (before each test's browser context exists) is sufficient.
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _allow_loopback_fixtures(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CRAWLRX_SSRF_ALLOW_PRIVATE", "1")
 
 
 PAYLOAD = b'audio owned by this fixture'

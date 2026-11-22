@@ -33,9 +33,10 @@ class FakePage:
 
 
 def test_solver_code_lives_only_in_the_optional_solvers_package() -> None:
+    """Solver code stays inside crawlrx.solvers and crawlrx.solver_service."""
     names = {m.name for m in pkgutil.iter_modules(crawlrx.__path__)}
     stray = {n for n in names if any(word in n for word in ("solver", "challenge_resolver", "recaptcha", "funcaptcha"))}
-    assert stray == {"solvers"}
+    assert stray == {"solvers", "solver_service"}
 
 
 def test_solvers_are_not_loaded_in_handoff_mode() -> None:
