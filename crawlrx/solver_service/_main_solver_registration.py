@@ -10,8 +10,12 @@ import logging
 import os
 from typing import List, Optional, Tuple
 
-from .config import get_config
-from .solver_router import get_router
+try:
+    from .config import get_config
+    from .solver_router import get_router
+except ImportError:  # executed as a flat script (unified_entry: uvicorn main:app)
+    from config import get_config  # type: ignore[no-redef]
+    from solver_router import get_router  # type: ignore[no-redef]
 
 logger = logging.getLogger(__name__)
 
