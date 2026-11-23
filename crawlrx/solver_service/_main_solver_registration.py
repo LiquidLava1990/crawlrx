@@ -67,7 +67,17 @@ def _try_register(solver_type: str, module_path: str, class_name: str) -> Tuple[
 
 
 def _apply_botright_patches() -> None:
-    """Apply engine-compat patches before registration; never fatal."""
+    """Apply engine-compat patches before registration; never fatal.
+
+    Only meaningful for the legacy botright lane (CRAWLRX_STEALTH_ENGINE=
+    botright); the default in-house engine needs no patching, so patches are
+    skipped entirely on the default lane to avoid importing botright.
+    """
+    import os
+
+    if os.getenv("CRAWLRX_STEALTH_ENGINE", "own").strip().lower() != "botright":
+        logger.debug("Own stealth engine lane; skipping botright_patches")
+        return
     from .botright_patches import apply_all_patches
 
     try:

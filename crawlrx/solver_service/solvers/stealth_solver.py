@@ -1,10 +1,12 @@
-"""Stealth integration solver (Botright engine) — thin orchestrator.
+"""Stealth integration solver (own engine) — thin orchestrator.
 
 This module is the public entry point (``StealthSolver``,
-``solve_with_botright``). All non-orchestration logic lives in:
+``solve_with_botright`` -- legacy name kept for API stability). All
+non-orchestration logic lives in:
 
 * ``_stealth_helpers.py``     — JS payloads, dataclasses, type tables
 * ``_botright_browser.py``     — pool acquire / release / cleanup / drain
+                                 (engine lane chosen here; default: own engine)
 * ``_stealth_strategies.py``  — solve attempt + token extraction + detection
 
 Supports reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile.
@@ -46,21 +48,36 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-# Conditional botright import -- greenlet build fails on Python 3.14
+# Legacy lane (opt-in via CRAWLRX_STEALTH_ENGINE=botright). The default lane
+# is the in-house _stealth_engine, which needs no botright install -- so the
+# solver reports healthy whenever the own engine's prerequisites are met.
 try:
     import botright as _botright_module
     BOTRIGHT_AVAILABLE = True
 except Exception as _botright_err:  # noqa: BLE001
     _botright_module = None
     BOTRIGHT_AVAILABLE = False
-    logger.debug("Botright not available: %s", _botright_err)
+    logger.debug("Legacy botright lane unavailable: %s", _botright_err)
+
+
+def _own_engine_ready() -> bool:
+    """The default lane is up when its imports resolve (playwright + stealth)."""
+    try:
+        from .._stealth_engine.engine import StealthEngine  # noqa: F401
+        from ..solvers._stealth_browser_launch import stealth_async  # noqa: F401
+
+        return True
+    except Exception:  # noqa: BLE001 - readiness probe must never raise
+        return False
 
 
 class StealthSolver(BaseSolver):
-    """Stealth challenge handler (Botright engine) with built-in anti-detection.
+    """Stealth challenge handler (own engine) with built-in anti-detection.
 
-    Uses real Chromium fingerprints and AI-powered solving for reCAPTCHA
-    v2/v3, hCaptcha, and Cloudflare Turnstile (primary use case).
+    Forges coherent Chromium identities and drives real Chromium via the
+    in-house ``_stealth_engine`` (legacy botright lane opt-in via
+    CRAWLRX_STEALTH_ENGINE). Covers reCAPTCHA v2/v3, hCaptcha, and
+    Cloudflare Turnstile (primary use case).
 
     Args:
         config: Configuration dict with optional:
@@ -109,7 +126,7 @@ class StealthSolver(BaseSolver):
 
     # -- Public solve entry-point --------------------------------------
     async def solve(self, task: Task) -> TaskResult:
-        """Solve a CAPTCHA task using Botright."""
+        """Solve a challenge task through the stealth engine."""
         start_time = time.time()
         deadline = time.monotonic() + self.timeout
         params = task.params
@@ -147,28 +164,32 @@ class StealthSolver(BaseSolver):
     def health_check(self) -> Dict[str, Any]:
         """Return solver health status.
 
-        An optional dependency can be absent without stopping the service,
-        but the Botright backend must not be reported as available in that case.
+        Healthy when either lane is usable: the default in-house engine or
+        the legacy botright lane (opt-in via CRAWLRX_STEALTH_ENGINE).
         """
         try:
-            if not BOTRIGHT_AVAILABLE:
+            if not _own_engine_ready() and not BOTRIGHT_AVAILABLE:
                 return {
                     "healthy": False,
                     "optional": True,
                     "message": (
-                        "Botright package unavailable. The router may use "
-                        "configured fallback methods. Run: pip install botright && "
-                        "playwright install to enable"
+                        "No stealth lane available. Default engine needs "
+                        "playwright + playwright_stealth; the legacy lane "
+                        "needs CRAWLRX_STEALTH_ENGINE=botright plus the pip "
+                        "botright package."
                     ),
                 }
             pool_info = {
+                "engine": (
+                    "own" if _own_engine_ready() else "botright-legacy"
+                ),
                 "pool_size": sum(browser is not None for browser in self._browser_pool),
                 "max_sessions": self.max_sessions,
                 "in_use": sum(1 for v in self._browser_in_use.values() if v),
             }
             return {
                 "healthy": True,
-                "message": "Botright solver is available",
+                "message": "Stealth solver is available",
                 "details": pool_info,
             }
         except _BROAD_EXC as e:
@@ -218,7 +239,7 @@ async def solve_with_botright(
     timeout: int = DEFAULT_TIMEOUT,
     max_retries: int = MAX_RETRIES,
 ) -> Dict[str, Any]:
-    """Convenience function to solve CAPTCHA with Botright in one call."""
+    """Convenience one-call solve through the stealth engine (legacy name)."""
     method_map = _build_method_map()
     method = method_map.get(captcha_type, method_map["cloudflare"])
     config = {"timeout": timeout, "max_retries": max_retries, "enabled": True}

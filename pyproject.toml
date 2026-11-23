@@ -81,7 +81,7 @@ solver = [
     "pydoll-python>=0.1",
     "opencv-python-headless>=4.9",
     "pytesseract>=0.3.10",
-    "botright==0.5.1",
+    "browserforge>=1.2",
     "playwright-stealth>=2.0.0",
     "hrequests>=0.9",
     "numpy>=1.26",

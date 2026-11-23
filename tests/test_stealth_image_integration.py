@@ -7,14 +7,23 @@ from crawlrx.solver_service.solvers import stealth_solver
 apply_all_patches()
 
 
-def test_availability_tracks_dependency_and_enabled_state():
+def test_availability_tracks_lane_and_enabled_state():
     async def check():
-        for installed in (False, True):
-            with patch.object(stealth_solver, 'BOTRIGHT_AVAILABLE', installed):
-                solver = stealth_solver.StealthSolver({'enabled': True})
-                assert solver.health_check()['healthy'] is installed
-                assert await solver.is_available() is installed
-        with patch.object(stealth_solver, 'BOTRIGHT_AVAILABLE', True):
+        # Lane contract: healthy == (own engine ready OR legacy botright lane
+        # installed). Force each factor and assert the boolean algebra.
+        with patch.object(stealth_solver, '_own_engine_ready', return_value=True),              patch.object(stealth_solver, 'BOTRIGHT_AVAILABLE', False):
+            solver = stealth_solver.StealthSolver({'enabled': True})
+            assert solver.health_check()['healthy'] is True
+            assert await solver.is_available() is True
+        with patch.object(stealth_solver, '_own_engine_ready', return_value=False),              patch.object(stealth_solver, 'BOTRIGHT_AVAILABLE', True):
+            solver = stealth_solver.StealthSolver({'enabled': True})
+            assert solver.health_check()['healthy'] is True
+            assert await solver.is_available() is True
+        with patch.object(stealth_solver, '_own_engine_ready', return_value=False),              patch.object(stealth_solver, 'BOTRIGHT_AVAILABLE', False):
+            solver = stealth_solver.StealthSolver({'enabled': True})
+            assert solver.health_check()['healthy'] is False
+            assert await solver.is_available() is False
+        with patch.object(stealth_solver, '_own_engine_ready', return_value=True),              patch.object(stealth_solver, 'BOTRIGHT_AVAILABLE', True):
             assert not await stealth_solver.StealthSolver({'enabled': False}).is_available()
     asyncio.run(check())
 

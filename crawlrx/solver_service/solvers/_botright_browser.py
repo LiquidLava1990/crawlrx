@@ -72,18 +72,34 @@ async def get_botright_client(
     botright_module: Optional[Any],
     botright_available: bool,
 ) -> _BotrightClient:
-    """Lazy-init the underlying Botright client, raising if unavailable."""
+    """Lazy-init the stealth client: own engine by default, botright by opt-in.
+
+    ``CRAWLRX_STEALTH_ENGINE=own`` (default) builds the in-house engine --
+    no botright dependency. ``=botright`` keeps the legacy lane available
+    while it exists (strangler fig), with the same historical error when the
+    pip package is missing.
+    """
     if host._botright_client is not None:
+        return host._botright_client
+    import os
+
+    lane = os.getenv("CRAWLRX_STEALTH_ENGINE", "own").strip().lower()
+    if lane != "botright":
+        from .._stealth_engine import StealthEngine
+
+        host._botright_client = StealthEngine(headless=host.headless)
+        logger.debug("Own stealth engine initialized (lane=own)")
         return host._botright_client
     if not botright_available or botright_module is None:
         raise SolverError(
             "ERROR_BOTRIGHT_NOT_INSTALLED",
-            "Botright not available (import failed -- likely greenlet "
-            "build issue on Python 3.14). "
-            "Run: pip install botright && playwright install",
+            "Botright lane requested (CRAWLRX_STEALTH_ENGINE=botright) but the "
+            "pip botright package is not installed. "
+            "Run: pip install botright && playwright install "
+            "(or unset CRAWLRX_STEALTH_ENGINE to use the own engine)",
         )
     host._botright_client = await botright_module.Botright(headless=host.headless)
-    logger.debug("Botright client initialized")
+    logger.debug("Botright client initialized (lane=botright)")
     return host._botright_client
 
 

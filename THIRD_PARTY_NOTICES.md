@@ -3,7 +3,7 @@
 CrawlRX is licensed under Apache-2.0 (see `LICENSE`). It installs third-party projects as
 Python dependencies or runs them as separate containers, and each keeps its own license,
 which ships with the package or image it comes in. One component is distributed as patched
-source (botright, below); everything else is used unmodified.
+source (botright, below, legacy-lane only); everything else is used unmodified.
 
 ## Challenge-solving components (on by default; `CRAWLRX_CAPTCHA_MODE=handoff` turns them off)
 
@@ -15,7 +15,7 @@ source (botright, below); everything else is used unmodified.
 | pydub | Pulled in by playwright-recaptcha for audio conversion (needs ffmpeg) | <https://github.com/jiaaro/pydub> | MIT |
 | standard-aifc, standard-chunk, audioop-lts | Python 3.13+ backports of removed stdlib modules SpeechRecognition/pydub need | <https://pypi.org/project/standard-aifc/> | PSF-2.0 |
 | FFmpeg | System package in the Docker image | <https://ffmpeg.org/legal.html> | LGPL-2.1+ (Debian/Ubuntu build) |
-| botright | Dependency and patched copy: `crawlrx/solver_service/botright_patches/` contains GPL-derived modifications of botright 0.5.1 | <https://github.com/Vinyzu/Botright> | GPL-3.0 |
+| botright | Legacy engine lane only (opt-in via `CRAWLRX_STEALTH_ENGINE=botright`); `crawlrx/solver_service/botright_patches/` contains GPL-derived modifications of botright 0.5.1 shipped as source. Not installed by the wheel or the default Docker image | <https://github.com/Vinyzu/Botright> | GPL-3.0 |
 | Ultralytics YOLO | Segmentation weights (`yolov8m-seg.pt`, an Ultralytics YOLOv8m-seg export) and the ultralytics runtime used for image-grid classification | <https://github.com/ultralytics/ultralytics> | AGPL-3.0 |
 | onnxruntime | ONNX inference runtime for the YOLO models used by the challenge solvers | <https://github.com/microsoft/onnxruntime> | MIT |
 | DrissionPage | Dependency, browser-automation path | <https://github.com/g1879/DrissionPage> | MIT |
@@ -25,11 +25,12 @@ The solver-service client (`crawlrx/solvers/solver_service.py`) is original code
 the widely used 2Captcha-style HTTP API. The CrawlRX wheel and default Docker stack do not
 supply an API key for any external service.
 
-botright is GPL-3.0 software. CrawlRX installs it as a dependency and additionally ships a
-patched copy under `crawlrx/solver_service/botright_patches/`; those patches derive from
-botright 0.5.1 source and are therefore distributed under GPL-3.0, with the modified source
-included in this repository as that license requires. The GPL applies to the botright code
-and its patches, not to CrawlRX's Apache-2.0 code around them.
+The stealth engine is original CrawlRX code (`crawlrx/solver_service/_stealth_engine/`):
+it forges coherent Chromium identities with browserforge (Apache-2.0) plus CrawlRX's own
+fingerprint pools, drives playwright persistent contexts, and attaches CrawlRX's own
+hCaptcha/reCAPTCHA bridges. No botright code is required; the
+`solver_service/botright_patches/` directory remains only as an optional compatibility
+layer for the legacy lane (``CRAWLRX_STEALTH_ENGINE=botright``) and is inert by default.
 
 The remaining challenge-solver dependencies (aiohttp, curl_cffi, tls-client, camoufox,
 pydoll-python, easyocr, paddleocr, faster-whisper, hrequests and others in the
