@@ -21,19 +21,25 @@ from typing import Any, Dict, List, Optional
 
 # --- ErrCode/emit shim -----------------------------------------------------
 try:
-    from ..core.sentinel_errors import ErrCode, emit
+    from core.sentinel_errors import ErrCode, emit  # flat (master/container)
 except ImportError:
-    class _E:
-        def __getattr__(self: object, _: object) -> object:
-            return "ERR_UNKNOWN"
+    try:
+        from ..core.sentinel_errors import ErrCode, emit  # package layout
+    except ImportError:
+        class _E:  # shim: sentinel bus is optional
+            def __getattr__(self: object, _: object) -> object:
+                return "ERR_UNKNOWN"
 
-    ErrCode = _E()  # type: ignore[assignment]  because sentinel ErrCode is unavailable; _E() shim returns ERR_UNKNOWN for any attr
+        ErrCode = _E()  # type: ignore[assignment]
 
-    def emit(*a: object, **kw: object) -> None:  # noqa: ANN001
-        return None
+        def emit(*a: object, **kw: object) -> None:  # noqa: ANN001
+            return None
 
 
-from ..solver_base import BaseSolver, SolverTimeoutError  # noqa: E402
+try:
+    from solver_base import BaseSolver, SolverTimeoutError  # noqa: E402  flat (master/container)
+except ImportError:  # package layout
+    from ..solver_base import BaseSolver, SolverTimeoutError  # type: ignore[no-redef]  # noqa: E402
 
 from ._solver_helpers import BROAD_EXC as _BROAD_EXC
 from ._botright_browser import ( acquire_browser, cleanup_stale, close_all_browsers, close_all_pages, close_botright_client, release_browser, )
@@ -41,7 +47,10 @@ from ._stealth_helpers import DEFAULT_TIMEOUT, MAX_RETRIES, MAX_SESSIONS
 from ._stealth_strategies import ( build_failure_result, build_param_error_result, build_success_result, captcha_type_for, run_solve_attempt, )
 
 
-from ..models import Task, TaskResult  # noqa: E402
+try:
+    from models import Task, TaskResult  # noqa: E402  flat
+except ImportError:  # package layout
+    from ..models import Task, TaskResult  # type: ignore[no-redef]  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -63,8 +72,12 @@ except Exception as _botright_err:  # noqa: BLE001
 def _own_engine_ready() -> bool:
     """The default lane is up when its imports resolve (playwright + stealth)."""
     try:
-        from .._stealth_engine.engine import StealthEngine  # noqa: F401
-        from ..solvers._stealth_browser_launch import stealth_async  # noqa: F401
+        try:
+            from _stealth_engine.engine import StealthEngine  # noqa: F401  flat
+            from solvers._stealth_browser_launch import stealth_async  # noqa: F401  flat
+        except ImportError:  # package layout
+            from .._stealth_engine.engine import StealthEngine  # type: ignore[no-redef]  # noqa: F401
+            from ..solvers._stealth_browser_launch import stealth_async  # type: ignore[no-redef]  # noqa: F401
 
         return True
     except Exception:  # noqa: BLE001 - readiness probe must never raise
