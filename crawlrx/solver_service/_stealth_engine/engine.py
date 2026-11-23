@@ -118,3 +118,76 @@ class StealthEngine:
             except Exception:  # noqa: BLE001 - shutdown best-effort
                 pass
             self._playwright = None
+
+
+class CamoufoxEngine:
+    """Max-stealth lane: camoufox (patched Firefox) instead of spoofed Chrome.
+
+    Camoufox patches the browser itself, so JS-level spoofing tells vanish.
+    Humanized input and WebRTC blocking are built in; our identity module
+    supplies the fingerprint override.
+    """
+
+    def __init__(self, headless: bool = True, proxy: Optional[str] = None) -> None:
+        self.headless = headless
+        self.proxy = proxy
+
+    def build_browser_kwargs(self) -> dict:
+        kwargs: dict = dict(headless=self.headless, humanize=True, block_webrtc=True)
+        if self.proxy:
+            kwargs["proxy"] = {"server": self.proxy}
+        try:
+            import geoip2  # noqa: F401
+
+            kwargs["geoip"] = True
+        except (ImportError, ModuleNotFoundError):
+            pass
+        return kwargs
+
+    async def new_browser(self, **launch_arguments: Any) -> Any:
+        from camoufox.async_api import AsyncCamoufox
+
+        from .fingerprint import build_identity
+
+        identity = build_identity()
+        kwargs = self.build_browser_kwargs()
+        kwargs["fingerprint"] = {
+            "userAgent": identity.user_agent,
+            "screen": {
+                "width": identity.screen_width,
+                "height": identity.screen_height,
+            },
+            "viewport": {
+                "width": identity.viewport_width,
+                "height": identity.viewport_height,
+            },
+            "locale": identity.locale,
+        }
+        kwargs.update(launch_arguments)
+        manager = AsyncCamoufox(**kwargs)
+        origin_context = await manager.__aenter__()
+
+        class _Ctx:  # minimal facade matching StealthContext usage
+            def __init__(self, mgr: Any, ctx: Any) -> None:
+                self._mgr, self._ctx = mgr, ctx
+
+            async def new_page(self) -> Any:
+                return await self._ctx.new_page()
+
+            async def close(self) -> None:
+                try:
+                    await self._ctx.close()
+                finally:
+                    await self._mgr.__aexit__(None, None, None)
+
+        return _Ctx(manager, origin_context)
+
+
+def build_engine(headless: bool = True, proxy: Optional[str] = None) -> Any:
+    """Engine factory honoring CRAWLRX_STEALTH_ENGINE: own|camoufox|botright."""
+    import os
+
+    lane = os.getenv("CRAWLRX_STEALTH_ENGINE", "own").strip().lower()
+    if lane == "camoufox":
+        return CamoufoxEngine(headless=headless, proxy=proxy)
+    return StealthEngine(headless=headless, proxy=proxy)

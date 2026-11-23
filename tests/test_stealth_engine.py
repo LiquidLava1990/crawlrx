@@ -163,3 +163,27 @@ def test_engine_new_browser_uses_persistent_context(monkeypatch: pytest.MonkeyPa
     assert captured.get("ignore_default_args") == ["--enable-automation"]
     assert captured.get("user_data_dir"), "persistent context needs a user data dir"
     assert ctx is not None
+
+
+def test_camoufox_lane_selected_by_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CRAWLRX_STEALTH_ENGINE=camoufox builds the camoufox-backed engine."""
+    engine_mod = _engine("engine")
+    monkeypatch.setenv("CRAWLRX_STEALTH_ENGINE", "camoufox")
+    eng = engine_mod.build_engine(headless=True)
+    assert type(eng).__name__ == "CamoufoxEngine", type(eng).__module__
+
+
+def test_camoufox_engine_kwargs_shape() -> None:
+    """Camoufox engine launches humanized, webrtc-blocked, geoip when present."""
+    engine_mod = _engine("engine")
+    eng = engine_mod.CamoufoxEngine(headless=True)
+    kwargs = eng.build_browser_kwargs()
+    assert kwargs["humanize"] is True
+    assert kwargs["block_webrtc"] is True
+    assert "headless" in kwargs
+
+
+def test_default_lane_still_own(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine_mod = _engine("engine")
+    monkeypatch.delenv("CRAWLRX_STEALTH_ENGINE", raising=False)
+    assert type(engine_mod.build_engine(headless=True)).__name__ == "StealthEngine"

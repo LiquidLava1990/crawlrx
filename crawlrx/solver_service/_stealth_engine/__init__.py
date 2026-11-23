@@ -10,6 +10,6 @@ Lane selection (strangler fig): ``CRAWLRX_STEALTH_ENGINE=own`` (default) uses
 this engine; ``=botright`` keeps the legacy pip-botright path working while
 it exists. See ``solvers._botright_browser.get_botright_client``.
 """
-from .engine import StealthEngine
+from .engine import CamoufoxEngine, StealthEngine, build_engine
 
-__all__ = ["StealthEngine"]
+__all__ = ["StealthEngine", "CamoufoxEngine", "build_engine"]

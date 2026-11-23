@@ -87,14 +87,14 @@ async def get_botright_client(
     import os
 
     lane = os.getenv("CRAWLRX_STEALTH_ENGINE", "own").strip().lower()
-    if lane != "botright":
+    if lane in ("own", "camoufox"):
         try:
-            from .._stealth_engine import StealthEngine
+            from .._stealth_engine import build_engine
         except ImportError:  # flat layout (master tree)
-            from _stealth_engine import StealthEngine
+            from _stealth_engine import build_engine
 
-        host._botright_client = StealthEngine(headless=host.headless)
-        logger.debug("Own stealth engine initialized (lane=own)")
+        host._botright_client = build_engine(headless=host.headless)
+        logger.debug("Stealth engine initialized (lane=%s)", lane)
         return host._botright_client
     if not botright_available or botright_module is None:
         raise SolverError(
@@ -102,7 +102,7 @@ async def get_botright_client(
             "Botright lane requested (CRAWLRX_STEALTH_ENGINE=botright) but the "
             "pip botright package is not installed. "
             "Run: pip install botright && playwright install "
-            "(or unset CRAWLRX_STEALTH_ENGINE to use the own engine)",
+            "(or use the own/camoufox engine lanes)",
         )
     host._botright_client = await botright_module.Botright(headless=host.headless)
     logger.debug("Botright client initialized (lane=botright)")
