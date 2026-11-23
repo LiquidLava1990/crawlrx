@@ -18,7 +18,7 @@ from ._solver_helpers import BROAD_EXC as _BROAD_EXC
 # Resolve `core.sentinel_errors` exactly the way the original solver did so
 # emit() routes through the canonical Sentinel channel.
 try:
-    from ..core.sentinel_errors import ErrCode, emit
+    from core.sentinel_errors import ErrCode, emit
 except ImportError:
     class _E:  # pragma: no cover - last-resort shim
         def __getattr__(self: object, _: object) -> object:
@@ -31,7 +31,10 @@ except ImportError:
         return None
 
 
-from ..solver_base import SolverError  # noqa: E402
+try:
+    from solver_base import SolverError  # noqa: E402
+except ImportError:  # package layout (release tree)
+    from ..solver_base import SolverError  # type: ignore[no-redef]  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -85,7 +88,10 @@ async def get_botright_client(
 
     lane = os.getenv("CRAWLRX_STEALTH_ENGINE", "own").strip().lower()
     if lane != "botright":
-        from .._stealth_engine import StealthEngine
+        try:
+            from .._stealth_engine import StealthEngine
+        except ImportError:  # flat layout (master tree)
+            from _stealth_engine import StealthEngine
 
         host._botright_client = StealthEngine(headless=host.headless)
         logger.debug("Own stealth engine initialized (lane=own)")

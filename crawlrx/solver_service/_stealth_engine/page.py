@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional
 
+from ._compat import sibling as _compat  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 _NAV_HINTS = {"Windows": "Win32", "macOS": "MacIntel", "Linux": "Linux x86_64"}
@@ -48,8 +50,7 @@ async def apply_identity_cdp(page: Any, identity: Any) -> None:
 async def _apply_stealth_scripts(page: Any) -> None:
     """Reuse the pool's playwright_stealth fallback chain."""
     try:
-        from ..solvers._stealth_browser_launch import stealth_async
-
+        stealth_async = _compat.sibling("solvers._stealth_browser_launch").stealth_async
         await stealth_async(page._origin_page)  # type: ignore[attr-defined]
     except _STEALTH_SETUP_ERRORS as exc:  # stealth is best-effort
         logger.debug("stealth_async unavailable: %s", exc)
@@ -77,7 +78,7 @@ class StealthPage:
     # -- Solve hooks (duck-typed targets of _run_active_solver) ---------
 
     async def solve_hcaptcha(self, rq_data: Optional[str] = None) -> Optional[str]:
-        from ..solvers.hcaptcha_challenge import HcaptchaChallengeHandler
+        HcaptchaChallengeHandler = _compat.sibling("solvers.hcaptcha_challenge").HcaptchaChallengeHandler
 
         if rq_data:
             return None  # provider-specific request data cannot be injected
@@ -98,7 +99,7 @@ class StealthPage:
         return await handler._solve_challenge(self._origin_page)
 
     async def solve_recaptcha(self) -> Optional[str]:
-        from ..botright_patches.recaptcha_bridge import solve_recaptcha as bridge
+        bridge = _compat.sibling("botright_patches.recaptcha_bridge").solve_recaptcha
 
         return await bridge(self._origin_page)
 

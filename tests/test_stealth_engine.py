@@ -17,7 +17,21 @@ import pytest
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
 
-from crawlrx.solver_service.solvers import _botright_browser  # noqa: E402
+if (_REPO / "crawlrx-solver").is_dir():  # master tree: flat solver package
+    sys.path.insert(0, str(_REPO / "crawlrx-solver"))
+    from solvers import _botright_browser  # type: ignore[no-redef]  # noqa: E402
+
+    def _engine(modname: str) -> Any:
+        import importlib
+
+        return importlib.import_module(f"_stealth_engine.{modname}")
+else:  # public-release layout: crawlrx.solver_service
+    from crawlrx.solver_service.solvers import _botright_browser  # type: ignore[no-redef]  # noqa: E402
+
+    def _engine(modname: str) -> Any:
+        import importlib
+
+        return importlib.import_module(f"crawlrx.solver_service._stealth_engine.{modname}")
 
 
 class _FakeCDP:
@@ -38,9 +52,7 @@ class _FakePage:
 
 
 def _engine_modules() -> tuple[Any, Any]:
-    from crawlrx.solver_service._stealth_engine import fingerprint, page as page_mod
-
-    return fingerprint, page_mod
+    return _engine("fingerprint"), _engine("page")
 
 
 def test_identity_is_coherent_ua_brands_version() -> None:
@@ -81,8 +93,7 @@ def test_cdp_override_carries_brands_and_platform() -> None:
 
 
 def test_stealth_page_exposes_solve_hooks() -> None:
-    page_mod = pytest.importorskip("crawlrx.solver_service._stealth_engine.page")
-    from crawlrx.solver_service._stealth_engine import page as engine_page
+    engine_page = _engine("page")
 
     assert hasattr(engine_page.StealthPage, "solve_hcaptcha")
     assert hasattr(engine_page.StealthPage, "solve_recaptcha")
@@ -103,7 +114,7 @@ def test_engine_flag_selects_own_lane(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("CRAWLRX_STEALTH_ENGINE", raising=False)
     client = asyncio.run(_botright_browser.get_botright_client(host, None, False))
     assert client is not None
-    assert type(client).__module__.startswith("crawlrx.solver_service._stealth_engine"), (
+    assert "_stealth_engine" in type(client).__module__, (
         f"default lane must be the own engine, got {type(client).__module__}"
     )
 
@@ -117,7 +128,7 @@ def test_engine_flag_selects_own_lane(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_engine_new_browser_uses_persistent_context(monkeypatch: pytest.MonkeyPatch) -> None:
     """The engine launches a persistent context with automation flag removed."""
-    from crawlrx.solver_service._stealth_engine import engine as engine_mod
+    engine_mod = _engine("engine")
 
     captured: dict[str, Any] = {}
 

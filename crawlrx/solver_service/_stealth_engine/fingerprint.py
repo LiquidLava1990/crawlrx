@@ -13,12 +13,13 @@ import sys
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
-from ..solvers._stealth_browser_fingerprint import (
-    LOCALES,
-    TIMEZONES,
-    WEBGL_RENDERERS,
-    WEBGL_VENDORS,
-)
+from ._compat import sibling
+
+_pool_fingerprint = sibling("solvers._stealth_browser_fingerprint")
+LOCALES = _pool_fingerprint.LOCALES
+TIMEZONES = _pool_fingerprint.TIMEZONES
+WEBGL_RENDERERS = _pool_fingerprint.WEBGL_RENDERERS
+WEBGL_VENDORS = _pool_fingerprint.WEBGL_VENDORS
 
 try:
     from browserforge.fingerprints import FingerprintGenerator
@@ -153,7 +154,7 @@ def build_identity(seed_generator: Any = None) -> Identity:
         )
 
     # Static-pool fallback (no browserforge): ours-only path.
-    from ..solvers._stealth_browser_fingerprint import generate_fingerprint as pool_fp
+    pool_fp = sibling("solvers._stealth_browser_fingerprint").generate_fingerprint
 
     p = pool_fp()
     major = p.user_agent.split("Chrome/")[1].split(" ")[0] if "Chrome/" in p.user_agent else "122"
